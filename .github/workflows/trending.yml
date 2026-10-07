@@ -26,7 +26,6 @@ jobs:
         run: |
           python - <<EOF
           import os
-          import re
           import feedparser
           from bs4 import BeautifulSoup
           from discord_webhook import DiscordWebhook, DiscordEmbed
@@ -36,13 +35,10 @@ jobs:
           
           webhook_url = os.environ['DISCORD_WEBHOOK_URL']
 
-          # Loop through top 5 trending repos
           for entry in feed.entries[:5]:
-              # Clean HTML tags out of the summary and strip extra whitespace
               soup = BeautifulSoup(entry.summary, "html.parser")
               clean_desc = soup.get_text(separator=" ").strip()
               
-              # Truncate description if it's too long (keep it under 250 chars)
               if len(clean_desc) > 250:
                   clean_desc = clean_desc[:247] + "..."
 
