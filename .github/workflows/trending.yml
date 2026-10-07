@@ -2,21 +2,21 @@ name: Push GitHub Trending to Discord
 
 on:
   schedule:
-    - cron: '0 */3 * * *' # Runs every 3 hours
+    - cron: '0 * * * *' # Runs every hour on the hour
   workflow_dispatch:
 
 jobs:
   send-trending:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Needed so the script can save its history file back to the repo
+      contents: write # Required to commit the seen_repos.json file back to the repo
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.10'
 
@@ -36,6 +36,8 @@ jobs:
 
           STATE_FILE = "seen_repos.json"
           
+          print("🔍 Fetching and checking GitHub Trending RSS feed...")
+
           # Load previously seen repositories
           seen = []
           if os.path.exists(STATE_FILE):
@@ -50,18 +52,19 @@ jobs:
           webhook_url = os.environ['DISCORD_WEBHOOK_URL']
 
           new_seen = list(seen)
-          # Process entries from oldest to newest or check top items
-          for entry in reversed(feed.entries[:15]): # Check top 15 current trending
-              repo_id = entry.link # Use unique repository URL as identifier
+          new_repos_count = 0
+
+          for entry in reversed(feed.entries[:15]):
+              repo_id = entry.link
               
               if repo_id not in seen:
-                  # Clean description
+                  print(f"🔥 New trending repo found: {entry.title} ({repo_id})")
+                  
                   soup = BeautifulSoup(entry.summary, "html.parser")
                   clean_desc = soup.get_text(separator=" ").strip()
                   if len(clean_desc) > 250:
                       clean_desc = clean_desc[:247] + "..."
 
-                  # Send unique alert to Discord
                   webhook = DiscordWebhook(url=webhook_url)
                   embed = DiscordEmbed(
                       title=entry.title,
@@ -73,10 +76,14 @@ jobs:
                   webhook.add_embed(embed)
                   webhook.execute()
 
-                  # Track as seen
                   new_seen.append(repo_id)
+                  new_repos_count += 1
 
-          # Keep the history list trimmed to last 50 items to prevent bloat
+          if new_repos_count == 0:
+              print("ℹ️ Nothing new to report. All top trending repos have already been logged.")
+          else:
+              print(f"✅ Successfully posted {new_repos_count} new trending repository/repositories to Discord.")
+
           if len(new_seen) > 50:
               new_seen = new_seen[-50:]
 
@@ -85,7 +92,7 @@ jobs:
           EOF
 
       - name: Commit State Changes
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "Update seen trending repos cache"
           file_pattern: seen_repos.json
