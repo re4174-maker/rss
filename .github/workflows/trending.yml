@@ -78,6 +78,7 @@ jobs:
                       color=5814783
                   )
                   embed.set_author(name="🔥 New GitHub Trending Repo!")
+                  embed.set_footer(text="via GitHub Actions")
                   webhook.add_embed(embed)
                   webhook.execute()
 
