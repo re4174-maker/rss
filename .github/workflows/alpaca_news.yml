@@ -103,6 +103,7 @@ jobs:
                       color=15158332 # Professional financial accent color
                   )
                   embed.set_author(name=f"📈 Alpaca News [{symbols}]" if symbols else "📈 Alpaca Financial News")
+                  embed.set_footer(text="via GitHub Actions")
                   webhook.add_embed(embed)
                   webhook.execute()
 
