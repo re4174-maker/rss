@@ -2,54 +2,90 @@ name: Push GitHub Trending to Discord
 
 on:
   schedule:
-    - cron: '0 8 * * *' # Runs every day at 8:00 UTC
+    - cron: '0 */3 * * *' # Runs every 3 hours
   workflow_dispatch:
 
 jobs:
   send-trending:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed so the script can save its history file back to the repo
+
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
       - name: Install Dependencies
         run: pip install feedparser discord-webhook beautifulsoup4
 
-      - name: Run Script
+      - name: Run Trend Checker & Notifier
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           python - <<EOF
           import os
+          import json
           import feedparser
           from bs4 import BeautifulSoup
           from discord_webhook import DiscordWebhook, DiscordEmbed
 
+          STATE_FILE = "seen_repos.json"
+          
+          # Load previously seen repositories
+          seen = []
+          if os.path.exists(STATE_FILE):
+              try:
+                  with open(STATE_FILE, "r") as f:
+                      seen = json.load(f)
+              except Exception:
+                  seen = []
+
           feed_url = "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml"
           feed = feedparser.parse(feed_url)
-          
           webhook_url = os.environ['DISCORD_WEBHOOK_URL']
 
-          for entry in feed.entries[:5]:
-              soup = BeautifulSoup(entry.summary, "html.parser")
-              clean_desc = soup.get_text(separator=" ").strip()
+          new_seen = list(seen)
+          # Process entries from oldest to newest or check top items
+          for entry in reversed(feed.entries[:15]): # Check top 15 current trending
+              repo_id = entry.link # Use unique repository URL as identifier
               
-              if len(clean_desc) > 250:
-                  clean_desc = clean_desc[:247] + "..."
+              if repo_id not in seen:
+                  # Clean description
+                  soup = BeautifulSoup(entry.summary, "html.parser")
+                  clean_desc = soup.get_text(separator=" ").strip()
+                  if len(clean_desc) > 250:
+                      clean_desc = clean_desc[:247] + "..."
 
-              webhook = DiscordWebhook(url=webhook_url)
-              embed = DiscordEmbed(
-                  title=entry.title,
-                  description=clean_desc,
-                  url=entry.link,
-                  color=5814783
-              )
-              embed.set_author(name="🔥 GitHub Global Trending")
-              webhook.add_embed(embed)
-              webhook.execute()
+                  # Send unique alert to Discord
+                  webhook = DiscordWebhook(url=webhook_url)
+                  embed = DiscordEmbed(
+                      title=entry.title,
+                      description=clean_desc,
+                      url=entry.link,
+                      color=5814783
+                  )
+                  embed.set_author(name="🔥 New GitHub Trending Repo!")
+                  webhook.add_embed(embed)
+                  webhook.execute()
+
+                  # Track as seen
+                  new_seen.append(repo_id)
+
+          # Keep the history list trimmed to last 50 items to prevent bloat
+          if len(new_seen) > 50:
+              new_seen = new_seen[-50:]
+
+          with open(STATE_FILE, "w") as f:
+              json.dump(new_seen, f)
           EOF
+
+      - name: Commit State Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update seen trending repos cache"
+          file_pattern: seen_repos.json
