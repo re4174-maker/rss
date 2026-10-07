@@ -1,0 +1,49 @@
+name: Push GitHub Trending to Discord
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Runs every day at 8:00 UTC
+  workflow_dispatch: # Lets you trigger it manually anytime
+
+jobs:
+  send-trending:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: pip install feedparser discord-webhook
+
+      - name: Run Script
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python - <<EOF
+          import os
+          import feedparser
+          from discord_webhook import DiscordWebhook, DiscordEmbed
+
+          feed_url = "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml"
+          feed = feedparser.parse(feed_url)
+          
+          # Pulls the URL safely from the environment secret
+          webhook_url = os.environ['DISCORD_WEBHOOK_URL']
+
+          for entry in feed.entries[:5]:
+              webhook = DiscordWebhook(url=webhook_url)
+              embed = DiscordEmbed(
+                  title=entry.title,
+                  description=entry.summary,
+                  url=entry.link,
+                  color=5814783
+              )
+              embed.set_author(name="🔥 GitHub Global Trending")
+              webhook.add_embed(embed)
+              webhook.execute()
+          EOF
