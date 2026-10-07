@@ -9,11 +9,17 @@ jobs:
   send-trending:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Required to commit the seen_repos.json file back to the repo
+      contents: write # Required to commit state files back to the repo
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
+
+      - name: Restore State from Background Branch
+        run: |
+          git fetch origin state-data || true
+          git checkout origin/state-data -- *.json 2>/dev/null || true
+          git reset # Unstage files so git status is clean for the script
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -38,7 +44,6 @@ jobs:
           
           print("🔍 Fetching and checking GitHub Trending RSS feed...")
 
-          # Load previously seen repositories
           seen = []
           if os.path.exists(STATE_FILE):
               try:
@@ -91,8 +96,10 @@ jobs:
               json.dump(new_seen, f)
           EOF
 
-      - name: Commit State Changes
+      - name: Commit State to Background Branch
         uses: stefanzweifel/git-auto-commit-action@v7
         with:
-          commit_message: "Update seen trending repos cache"
-          file_pattern: seen_repos.json
+          commit_message: "Update seen trending repos cache [skip ci]"
+          branch: state-data
+          create_branch: true
+          file_pattern: "*.json"
