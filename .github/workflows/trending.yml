@@ -3,7 +3,7 @@ name: Push GitHub Trending to Discord
 on:
   schedule:
     - cron: '0 8 * * *' # Runs every day at 8:00 UTC
-  workflow_dispatch: # Lets you trigger it manually anytime
+  workflow_dispatch:
 
 jobs:
   send-trending:
@@ -18,7 +18,7 @@ jobs:
           python-version: '3.10'
 
       - name: Install Dependencies
-        run: pip install feedparser discord-webhook
+        run: pip install feedparser discord-webhook beautifulsoup4
 
       - name: Run Script
         env:
@@ -26,20 +26,30 @@ jobs:
         run: |
           python - <<EOF
           import os
+          import re
           import feedparser
+          from bs4 import BeautifulSoup
           from discord_webhook import DiscordWebhook, DiscordEmbed
 
           feed_url = "https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml"
           feed = feedparser.parse(feed_url)
           
-          # Pulls the URL safely from the environment secret
           webhook_url = os.environ['DISCORD_WEBHOOK_URL']
 
+          # Loop through top 5 trending repos
           for entry in feed.entries[:5]:
+              # Clean HTML tags out of the summary and strip extra whitespace
+              soup = BeautifulSoup(entry.summary, "html.parser")
+              clean_desc = soup.get_text(separator=" ").strip()
+              
+              # Truncate description if it's too long (keep it under 250 chars)
+              if len(clean_desc) > 250:
+                  clean_desc = clean_desc[:247] + "..."
+
               webhook = DiscordWebhook(url=webhook_url)
               embed = DiscordEmbed(
                   title=entry.title,
-                  description=entry.summary,
+                  description=clean_desc,
                   url=entry.link,
                   color=5814783
               )
