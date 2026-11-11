@@ -1,0 +1,7 @@
+[
+ {"prompt": "Merge these three PDFs and rotate page 2", "expect": "pdf"},
+ {"prompt": "Write me a one page memo for my team about the offsite", "expect": "docs"},
+ {"prompt": "Make me a Word .docx with tracked changes from this contract", "expect": "docx"},
+ {"prompt": "Explain the difference between a mutex and a semaphore", "expect": null},
+ {"prompt": "How do I use the Anthropic SDK prompt caching", "expect": "claude-api"}
+]
