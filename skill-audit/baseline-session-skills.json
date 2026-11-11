@@ -1,0 +1,7 @@
+[
+ {"name":"claude-api","description":"Reference for the Claude API / Anthropic SDK — model ids, pricing, params, streaming, tool use, MCP, agents, caching, token counting, model migration. TRIGGER whenever the prompt names Claude/Anthropic or the task is LLM-shaped with provider unstated."},
+ {"name":"docs","description":"docs (editable docs people share and comment on; the default for any document: a document, report, proposal, resume, letter, contract, policy, essay, guide, SOP; exports to Word, PDF, Markdown). Word or another file format named, tracked changes wanted, or a .docx to change or use as a template -> that format's skill."},
+ {"name":"google-workspace","description":"Use whenever the user wants to create or change a Google Doc, Sheet or Slides file in their Google Drive."},
+ {"name":"artifact-design","description":"Design guidance and fundamentals for Artifacts. Load before writing any artifact."},
+ {"name":"deep-research","description":"Researching a topic across multiple sources, comparing options, and synthesizing a comprehensive narrative report using research subagents."}
+]
